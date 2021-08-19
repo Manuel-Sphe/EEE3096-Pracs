@@ -1,4 +1,4 @@
-[B#ifndef BINCLOCK_H
+#ifndef BINCLOCK_H
 #define BINCLOCK_H
 
 //Some reading (if you want)
