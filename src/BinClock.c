@@ -223,6 +223,10 @@ void minInc(void){
 		toggleTime();
 		//Increase minutes by 1, ensuring not to overflow
 		mins += 1;
+		if(min ==60){
+			min = 0;
+			hours+=1;
+		}
 		//Write minutes back to the RTC
 	}
 	lastInterruptTime = interruptTime;
