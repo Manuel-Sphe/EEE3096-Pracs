@@ -4,9 +4,9 @@
  * Modified by Keegan Crankshaw
  * Further Modified By: Mark Njoroge 
  *
+ * <MSBAKH003> <MBHNKU001>
  * 
- * <STUDNUM_1> <STUDNUM_2>
- * Date
+ * 18 August 2021
 */
 
 #include <signal.h> //for catching signals
@@ -28,51 +28,45 @@ int HH,MM,SS;
 
 // Clean up function to avoid damaging used pins
 void CleanUp(int sig){
-	printf("Cleaning up\n");
+        printf("Cleaning up\n");
+        //Set LED to low then input mode
+        digitalWrite(LED, LOW);
 
-	//Set LED to low then input mode
-	digitalWrite(25,LOW);
-	//Logic here
-	//initGPIO();
+        for (int j=0; j < sizeof(BTNS)/sizeof(BTNS[0]); j++) {
+                pinMode(BTNS[j],INPUT);
+        }
 
-	for (int j=0; j < sizeof(BTNS)/sizeof(BTNS[0]); j++) {
-		pinMode(BTNS[j],INPUT);
-	}
-
-	exit(0);
+        exit(0);
 
 }
 
 void initGPIO(void){
-	/* 
-	 * Sets GPIO using wiringPi pins. see pinout.xyz for specific wiringPi pins
-	 * You can also use "gpio readall" in the command line to get the pins
-	 * Note: wiringPi does not use GPIO or board pin numbers (unless specifically set to that mode)
-	 */
-	printf("Setting up\n");
-	wiringPiSetup(); //This is the default mode. If you want to change pinouts, be aware
-	
+        /* 
+         * Sets GPIO using wiringPi pins. see pinout.xyz for specific wiringPi pins
+         * You can also use "gpio readall" in the command line to get the pins
+         * Note: wiringPi does not use GPIO or board pin numbers (unless specifically set to that mode)
+         */
+        printf("Setting up\n");
+        wiringPiSetup(); //This is the default mode. If you want to change pinouts, be aware
+        
 
-	RTC = wiringPiI2CSetup(RTCAddr); //Set up the RTC
-	
-	//Set upi the LED
-	//Write your Logic here
+        RTC = wiringPiI2CSetup(RTCAddr); //Set up the RTC
+        //Set up the LED
+        pinMode(LED, OUTPUT);
+        printf("LED and RTC done\n");
+        //Set up the Buttons
+        for(int j=0; j < sizeof(BTNS)/sizeof(BTNS[0]); j++){
+                pinMode(BTNS[j], INPUT);
+                pullUpDnControl(BTNS[j], PUD_UP);
+        }
+        
+        //Attach interrupts to Buttons
+        //Write your logic here
+        wiringPiISR(BTNS[0], INT_EDGE_RISING, &hourInc);
+        wiringPiISR(BTNS[1], INT_EDGE_RISING, &minInc);
 
-	
-	printf("LED and RTC done\n");
-	
-	//Set up the Buttons
-	for(int j=0; j < sizeof(BTNS)/sizeof(BTNS[0]); j++){
-		pinMode(BTNS[j], INPUT);
-		pullUpDnControl(BTNS[j], PUD_UP);
-	}
-	
-	//Attach interrupts to Buttons
-	//Write your logic here
-
-
-	printf("BTNS done\n");
-	printf("Setup done\n");
+        printf("BTNS done\n");
+        printf("Setup done\n");
 }
 
 
@@ -80,83 +74,84 @@ void initGPIO(void){
  * The main function
  * This function is called, and calls all relevant functions we've written
  */
+
 int main(void){
-	signal(SIGINT,CleanUp);
-	initGPIO();
+        signal(SIGINT,CleanUp);
+        initGPIO();
 
-	//Set random time (3:04PM)
-	//You can comment this file out later
-	wiringPiI2CWriteReg8(RTC, HOUR_REGISTER, 0x13+TIMEZONE);
-	wiringPiI2CWriteReg8(RTC, MIN_REGISTER, 0x4);
-	wiringPiI2CWriteReg8(RTC, SEC_REGISTER, 0x00);
-	
-	// Repeat this until we shut down
-	for (;;){
-		//Fetch the time from the RTC
-		//Write your logic here
-		
-		//Toggle Seconds LED ->Still need to figure this one out !!!!!
-		pinMode(25,OUTPUT);
-		//Write your logic here	
-		digitalWrite(25,HIGH);
-		delay(1000);
-		digitalWrite(25,LOW);
-		delay(1000);
+        //Set random time (3:04PM)
+        //You can comment this file out later
+        wiringPiI2CWriteReg8(RTC, HOUR_REGISTER, 0x13+TIMEZONE);
+        wiringPiI2CWriteReg8(RTC, MIN_REGISTER, 0x4);
+        wiringPiI2CWriteReg8(RTC, SEC_REGISTER, 0x00);
+        
+        // Repeat this until we shut down
+        for (;;){
+                //Fetch the time from the RTC
+                hours = wiringPiI2CReadReg8(RTC, HOUR_REGISTER);
+                mins = wiringPiI2CReadReg8 (RTC, MIN_REGISTER);
+                secs = wiringPiI2CReadReg8 (RTC, SEC_REGISTER);
+                //Toggle Seconds LED
+                //Write your logic here
+                digitalWrite(25, HIGH);
+                delay(1000);
+                digitalWrite(25, LOW);
+                delay(1000);
+                
+                //if (digitalRead(LED)){
+                 //digitalWrite(LED, LOW);
+                       // }
+                //else {
+                       // digitalWrite(LED, HIGH);
+                      //  }          
+                // Print out the time we have stored on our RTC
+                printf("The current time is: %d:%d:%d\n", hours, mins, secs);
 
-		if(digitalRead(BTNS[0]) == 0 )
-			hourInc();
-		else if(digitalRead(BTNS[1]) ==0 )
-			minInc();
-		
-		// Print out the time we have stored on our RTC
-		printf("The current time is: %d:%d:%d\n", hours, mins, secs);
-
-		//using a delay to make our program "less CPU hungry"
-		delay(1000); //milliseconds
-	}
-	return 0;
+                //using a delay to make our program "less CPU hungry"
+                delay(1000); //milliseconds
+        }
+        return 0;
 }
 
 /*
  * Changes the hour format to 12 hours
- */
+         */
 int hFormat(int hours){
-	/*formats to 12h*/
-	if (hours >= 24){
-		hours = 0;
-	}
-	else if (hours > 12){
-		hours -= 12;
-	}
-	return (int)hours;
+        /*formats to 12h*/
+        if (hours >= 24){
+                hours = 0;
+        }
+        else if (hours > 12){
+                hours -= 12;
+        }
+        return (int)hours;
 }
-
 
 /*
  * hexCompensation
  * This function may not be necessary if you use bit-shifting rather than decimal checking for writing out time values
- * Convert HEX or BCD value to DEC where 0x45 == 0d45 	
+ * Convert HEX or BCD value to DEC where 0x45 == 0d45   
  */
 int hexCompensation(int units){
 
-	int unitsU = units%0x10;
+        int unitsU = units%0x10;
 
-	if (units >= 0x50){
-		units = 50 + unitsU;
-	}
-	else if (units >= 0x40){
-		units = 40 + unitsU;
-	}
-	else if (units >= 0x30){
-		units = 30 + unitsU;
-	}
-	else if (units >= 0x20){
-		units = 20 + unitsU;
-	}
-	else if (units >= 0x10){
-		units = 10 + unitsU;
-	}
-	return units;
+        if (units >= 0x50){
+                units = 50 + unitsU;
+        }
+        else if (units >= 0x40){
+                units = 40 + unitsU;
+        }
+        else if (units >= 0x30){
+                units = 30 + unitsU;
+        }
+        else if (units >= 0x20){
+                units = 20 + unitsU;
+        }
+        else if (units >= 0x10){
+                units = 10 + unitsU;
+        }
+        return units;
 }
 
 
@@ -165,24 +160,24 @@ int hexCompensation(int units){
  * This function "undoes" hexCompensation in order to write the correct base 16 value through I2C
  */
 int decCompensation(int units){
-	int unitsU = units%10;
+        int unitsU = units%10;
 
-	if (units >= 50){
-		units = 0x50 + unitsU;
-	}
-	else if (units >= 40){
-		units = 0x40 + unitsU;
-	}
-	else if (units >= 30){
-		units = 0x30 + unitsU;
-	}
-	else if (units >= 20){
-		units = 0x20 + unitsU;
-	}
-	else if (units >= 10){
-		units = 0x10 + unitsU;
-	}
-	return units;
+        if (units >= 50){
+                units = 0x50 + unitsU;
+        }
+        else if (units >= 40){
+                units = 0x40 + unitsU;
+        }
+        else if (units >= 30){
+		 units = 0x30 + unitsU;
+        }
+        else if (units >= 20){
+                units = 0x20 + unitsU;
+        }
+        else if (units >= 10){
+                units = 0x10 + unitsU;
+        }
+        return units;
 }
 
 
@@ -193,19 +188,25 @@ int decCompensation(int units){
  * Software Debouncing should be used
  */
 void hourInc(void){
-	//Debounce
-	long interruptTime = millis();
-
+        //Debounce
+        long interruptTime = millis();
 	if (interruptTime - lastInterruptTime>200){
-		printf("Interrupt 1 triggered, %x\n", hours);
-		//Fetch RTC Time
-		toggleTime();
-		//Increase hours by 1, ensuring not to overflow
-		hours += 1; 
-		hours = hFormat(hours);
-		//Write hours back to the RTC
-	}
-	lastInterruptTime = interruptTime;
+                printf("Interrupt 1 triggered, %x\n", hours);
+                //Fetch RTC Time
+                hours = wiringPiI2CReadReg8(RTC, HOUR_REGISTER);
+                //Increase hours by 1, ensuring not to overflow
+                if (hours == 23) {
+                        hours=0;
+                }
+                else {
+                        hours+=1;
+                }
+                //Write hours back to the RTC
+                wiringPiI2CWriteReg8(RTC, HOUR_REGISTER, hours);
+
+
+        }
+        lastInterruptTime = interruptTime;
 }
 
 /* 
@@ -215,43 +216,47 @@ void hourInc(void){
  * Software Debouncing should be used
  */
 void minInc(void){
-	long interruptTime = millis();
+        long interruptTime = millis();
 
-	if (interruptTime - lastInterruptTime>200){
-		printf("Interrupt 2 triggered, %x\n", mins);
-		//Fetch RTC Time
-		toggleTime();
-		//Increase minutes by 1, ensuring not to overflow
-		mins += 1;
-		if(mins ==60){
-			mins = 0;
-			hours+=1;
-		}
-		//Write minutes back to the RTC
-	}
-	lastInterruptTime = interruptTime;
+        if (interruptTime - lastInterruptTime>200){
+                printf("Interrupt 2 triggered, %x\n", mins);
+                //Fetch RTC Time
+                mins = wiringPiI2CReadReg8(RTC, MIN_REGISTER);
+                //Increase minutes by 1, ensuring not to overflow
+                if (mins == 59) {
+                        mins = 0;
+                }
+                else {
+                        mins += 1;
+                }
+                //Write minutes back to the RTC
+                wiringPiI2CWriteReg8(RTC, MIN_REGISTER, mins);
+
+        }
+        lastInterruptTime = interruptTime;
 }
 
 //This interrupt will fetch current time from another script and write it to the clock registers
 //This functions will toggle a flag that is checked in main
 void toggleTime(void){
-	long interruptTime = millis();
+        long interruptTime = millis();
 
-	if (interruptTime - lastInterruptTime>200){
-		HH = getHours();
-		MM = getMins();
-		SS = getSecs();
+        if (interruptTime - lastInterruptTime>200){
+                HH = getHours();
+                MM = getMins();
+                SS = getSecs();
 
-		HH = hFormat(HH);
-		HH = decCompensation(HH);
-		wiringPiI2CWriteReg8(RTC, HOUR_REGISTER, HH);
+                HH = hFormat(HH);
+                HH = decCompensation(HH);
+                wiringPiI2CWriteReg8(RTC, HOUR_REGISTER, HH);
 
-		MM = decCompensation(MM);
-		wiringPiI2CWriteReg8(RTC, MIN_REGISTER, MM);
+                MM = decCompensation(MM);
+                wiringPiI2CWriteReg8(RTC, MIN_REGISTER, MM);
 
-		SS = decCompensation(SS);
-		wiringPiI2CWriteReg8(RTC, SEC_REGISTER, 0b10000000+SS);
+                SS = decCompensation(SS);
+                wiringPiI2CWriteReg8(RTC, SEC_REGISTER, 0b10000000+SS);
 
-	}
-	lastInterruptTime = interruptTime;
+        }
+        lastInterruptTime = interruptTime;
 }
+
