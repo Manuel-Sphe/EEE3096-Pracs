@@ -97,13 +97,7 @@ int main(void){
                 delay(1000);
                 digitalWrite(25, LOW);
                 delay(1000);
-                
-                //if (digitalRead(LED)){
-                 //digitalWrite(LED, LOW);
-                       // }
-                //else {
-                       // digitalWrite(LED, HIGH);
-                      //  }          
+               
                 // Print out the time we have stored on our RTC
                 printf("The current time is: %d:%d:%d\n", hours, mins, secs);
 
